@@ -69,23 +69,12 @@ class GatewayAdapter(Protocol):
 _INSTANCES: dict[str, GatewayAdapter] = {}
 
 
-def _setting(name: str, default):
-    """Read an optional setting.
-
-    primary_gateway, secondary_gateway and mock_failure_rate are not yet fields
-    on Settings - Block 1a's config list predates the adapter layer. Reading
-    them defensively keeps this module working today; they should be promoted
-    to real, validated fields on Settings when config.py is next touched.
-    """
-    return getattr(settings, name, default)
-
-
 def primary_gateway_name() -> str:
-    return str(_setting("primary_gateway", "mock"))
+    return settings.primary_gateway
 
 
 def secondary_gateway_name() -> str:
-    return str(_setting("secondary_gateway", "mock"))
+    return settings.secondary_gateway
 
 
 def get_adapter(name: str) -> GatewayAdapter:

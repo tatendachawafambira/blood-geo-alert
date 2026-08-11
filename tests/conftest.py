@@ -82,3 +82,39 @@ def db_session(test_engine) -> Session:
 def session_factory(test_engine) -> sessionmaker:
     """For tests that need two genuinely concurrent connections (Block 3)."""
     return sessionmaker(bind=test_engine)
+
+
+@pytest.fixture()
+def audit_sink(test_engine, monkeypatch):
+    """Point audit.emit at the test database and hand back a reader.
+
+    domain/audit.py writes through AuditSessionLocal, which db.py binds to the
+    LIVE database. Left alone, every test that touches consent would append to
+    the real audit trail - an append-only table nothing is allowed to clean up.
+
+    Rebinding is also the only way to see the rows at all: emit commits on its
+    own connection by design, so it is invisible to the db_session transaction
+    and survives that transaction's rollback. Hence the truncate afterwards.
+    """
+    factory = sessionmaker(bind=test_engine)
+    monkeypatch.setattr("bga.domain.audit.AuditSessionLocal", factory)
+
+    with factory() as reset:
+        reset.execute(text("TRUNCATE audit.audit_event RESTART IDENTITY"))
+        reset.commit()
+
+    def rows():
+        with factory() as session:
+            return session.execute(
+                text(
+                    "SELECT id, actor, action, target_class, target_id, detail,"
+                    " correlation_id, created_at, prev_hash, entry_hash"
+                    " FROM audit.audit_event ORDER BY id"
+                )
+            ).all()
+
+    yield rows
+
+    with factory() as cleanup:
+        cleanup.execute(text("TRUNCATE audit.audit_event RESTART IDENTITY"))
+        cleanup.commit()

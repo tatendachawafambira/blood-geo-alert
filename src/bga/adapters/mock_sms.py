@@ -22,11 +22,12 @@ import random
 import threading
 from uuid import uuid4
 
-from bga.adapters.base import SubmitResult, _setting
+from bga.adapters.base import SubmitResult
+from bga.config import settings
 
 # Module-level and mutable on purpose: the gateway console (Block 7b) sets this
 # at runtime to demonstrate retry and failover. Settings only seed it.
-failure_rate: float = float(_setting("mock_failure_rate", 0.0))
+failure_rate: float = settings.mock_failure_rate
 
 # Delivery receipt vocabulary this mock understands, mapped to alert states.
 _RECEIPT_STATES = {

@@ -39,6 +39,19 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("blind_pepper_b64", "bga_blind_pepper"),
     )
 
+    # --- Gateways -------------------------------------------------------
+    # Names resolved by adapters.base.get_adapter. Not validated against the
+    # registry here: config must not import adapters, which import config.
+    # get_adapter raises on an unknown name rather than falling back.
+    primary_gateway: str = "mock"
+    secondary_gateway: str = "mock"
+
+    # Seeds the runtime value in adapters/mock_sms.py, which the gateway
+    # console then sets live to demonstrate retry, failover and the dead
+    # letter queue. Bounded, because a rate outside 0..1 is a typo that would
+    # otherwise mean either "never fail" or "always fail" silently.
+    mock_failure_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+
     # --- Domain configuration -------------------------------------------
     radius_bands: list[int] = [3000, 5000, 10000]
     frequency_cap_days: int = 14
