@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Blood donation - NBSZ</title>
+<link rel="stylesheet" href="/static/donor.css">
+</head>
+<body>
+<main>
+<h1>Blood is needed near you</h1>
+<p>The National Blood Service Zimbabwe is asking donors close by to come in.</p>
+
+<div class="point">
+<p class="name">{{ point_name }}</p>
+<p class="hours">{{ hours }}</p>
+</div>
+
+<!-- Plain form POST. No JavaScript anywhere on this page (FR-TOK-12). -->
+<form method="post" action="/d/{{ token }}">
+<button class="primary" type="submit" name="response" value="confirm">I'm on my way</button>
+<button class="secondary" type="submit" name="response" value="decline">Not today</button>
+</form>
+
+<p class="note">You can reply STOP to any of our messages to stop receiving them, free of charge.</p>
+</main>
+</body>
+</html>

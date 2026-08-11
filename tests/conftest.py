@@ -21,6 +21,14 @@ from bga.config import settings
 
 TEST_DB_NAME = "bga_test"
 
+# The donor application refuses to import without its own narrow role, so that
+# it can never silently fall back to the wider application role in production.
+# Tests drive it through an overridden session factory bound to bga_test, so
+# any non-empty value satisfies that guard. This runs at conftest import, ahead
+# of every test module.
+if not settings.database_url_donor:
+    settings.database_url_donor = settings.database_url_owner
+
 
 def _with_database(url: str, database: str) -> str:
     parts = urlsplit(url)

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Blood donation - NBSZ</title>
+<link rel="stylesheet" href="/static/donor.css">
+</head>
+<body>
+<main>
+{% if confirmed %}
+<h1>Thank you</h1>
+<p>We have recorded that you are coming. Please bring an identity document if you have one.</p>
+
+<div class="point">
+<p class="name">{{ point_name }}</p>
+<p class="hours">{{ hours }}</p>
+</div>
+
+{% if latitude is not none %}
+<a class="btn primary"
+   href="https://www.google.com/maps/dir/?api=1&amp;destination={{ latitude }},{{ longitude }}">Get directions</a>
+<p class="address">{{ point_name }}<br>{{ "%.5f"|format(latitude) }}, {{ "%.5f"|format(longitude) }}</p>
+{% endif %}
+{% else %}
+<h1>Thank you for letting us know</h1>
+<p>We have recorded that you cannot come today. You will not be contacted again about this request.</p>
+<p>You remain registered and we may contact you next time blood is needed near you.</p>
+{% endif %}
+
+<p class="note">You can reply STOP to any of our messages to stop receiving them, free of charge.</p>
+</main>
+</body>
+</html>
