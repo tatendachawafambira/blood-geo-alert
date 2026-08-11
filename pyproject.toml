@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bga"
+version = "1.0.0"
+description = "Blood Geo Alert - geo-fenced blood donor mobilisation (Release 1.0 pilot)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy>=2.0",
+    "alembic",
+    "psycopg[binary]>=3",
+    "pydantic-settings",
+    "cryptography",
+    "jinja2",
+    "python-multipart",
+    "structlog",
+    "httpx",
+    "qrcode[pil]",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+# Lets pytest import bga/ without an editable install having been done first.
+pythonpath = ["src"]
+testpaths = ["tests"]
