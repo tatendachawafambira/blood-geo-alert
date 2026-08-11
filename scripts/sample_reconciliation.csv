@@ -1,0 +1,9 @@
+donor_reference,abo,rh,last_donation_date,deferral_flag,deferral_review_date
+NBSZ-000001,O,POS,2026-01-15,true,2026-12-01
+NBSZ-000002,O,NEG,2026-01-15,false,
+NBSZ-000003,O,NEG,2026-01-15,false,
+NBSZ-000004,AB,POS,2026-01-15,false,
+NBSZ-000005,O,POS,2026-01-15,true,2026-12-01
+NBSZ-000006,B,POS,2026-01-15,false,
+NBSZ-000007,A,POS,2026-01-15,false,
+NBSZ-000009,O,POS,2026-01-15,false,
