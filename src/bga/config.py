@@ -52,6 +52,29 @@ class Settings(BaseSettings):
     # otherwise mean either "never fail" or "always fail" silently.
     mock_failure_rate: float = Field(default=0.0, ge=0.0, le=1.0)
 
+    # --- Dispatch worker -------------------------------------------------
+    dispatch_batch_size: int = Field(default=20, ge=1)
+    worker_poll_seconds: float = Field(default=2.0, gt=0)
+
+    # A row LOCKED for longer than this is assumed to belong to a worker that
+    # died and is returned to the queue. Must comfortably exceed the time one
+    # batch takes to submit, or two workers will process the same row.
+    worker_lock_timeout_seconds: float = Field(default=300.0, gt=0)
+
+    # Retry ladder. delay = uniform(0, min(cap, base * 2 ** attempts)) - full
+    # jitter, so a provider coming back up is not hit by every worker at once.
+    max_attempts: int = Field(default=5, ge=1)
+    retry_base_seconds: float = Field(default=2.0, gt=0)
+    retry_cap_seconds: float = Field(default=300.0, gt=0)
+
+    # Circuit breaker. The success threshold is what gives it hysteresis: a
+    # degraded provider that answers one request in three cannot flap the
+    # breaker open and closed, which would split dispatch across two providers
+    # and make delivery statistics uninterpretable.
+    breaker_failure_threshold: int = Field(default=5, ge=1)
+    breaker_cooldown_seconds: float = Field(default=30.0, gt=0)
+    breaker_success_threshold: int = Field(default=3, ge=1)
+
     # --- Domain configuration -------------------------------------------
     radius_bands: list[int] = [3000, 5000, 10000]
     frequency_cap_days: int = 14
