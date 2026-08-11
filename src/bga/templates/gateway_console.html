@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gateway console - Blood Geo Alert</title>
+<link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+<header>
+  <div class="title">Blood Geo Alert</div>
+  <div class="sub">Gateway console &middot; dispatch queue</div>
+</header>
+
+<main>
+<div class="sim-banner">
+  <strong>SIMULATED GATEWAY &mdash; no real SMS is sent.</strong>
+  In production this is the Africa&rsquo;s Talking adapter (see <code>adapters/</code>).
+</div>
+
+<div class="cards">
+  <div class="card">
+    <h2>Provider</h2>
+    <table>
+      <tr><th>Primary</th><td class="n">{{ primary }}</td></tr>
+      <tr><th>Secondary</th><td class="n">{{ secondary }}</td></tr>
+      <tr><th>Dead letter queue</th><td class="n">{{ dead_letters }}</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Simulated failure rate</h2>
+    <p class="note">Currently <strong>{{ '%.0f'|format(failure_rate * 100) }}%</strong>.
+      Applies to the dispatch worker process too.</p>
+    <form method="post" action="/gateway/failure-rate" class="inline">
+      {% for r in failure_rates %}
+      <button class="rate {% if r == failure_rate %}on{% endif %}" type="submit"
+              name="rate" value="{{ r }}">{{ '%.0f'|format(r * 100) }}%</button>
+      {% endfor %}
+    </form>
+    <p class="note">30% shows exponential backoff with jitter and the circuit breaker
+      opening. 100% drives messages to the dead letter queue.</p>
+  </div>
+</div>
+
+<div class="card wide" style="margin-top:16px">
+  <h2>Outbox &middot; newest first</h2>
+  {% if rows %}
+  <table class="queue">
+    <tr>
+      <th>Queued</th><th>To</th><th>Lang</th><th>Message</th>
+      <th>Outbox</th><th>Alert</th><th class="r">Att.</th><th>Adapter</th>
+    </tr>
+    {% for r in rows %}
+    <tr>
+      <td class="mono">{{ r.queued_at.strftime('%H:%M:%S') }}</td>
+      <td class="mono">{{ r.masked_msisdn }}</td>
+      <td>{{ r.language }}</td>
+      <td class="msg">{{ r.body }}{% if r.last_error %}<br><span class="err">{{ r.last_error }}</span>{% endif %}</td>
+      <td><span class="pill s-{{ r.outbox_state|lower }}">{{ r.outbox_state }}</span></td>
+      <td><span class="pill s-{{ r.alert_state|lower }}">{{ r.alert_state }}</span></td>
+      <td class="n">{{ r.attempts }}</td>
+      <td class="mono">{{ r.adapter }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="note">Numbers are masked. The full mobile number is never rendered on this
+    page, never logged, and exists in memory only for the moment a message is submitted.</p>
+  {% else %}
+  <p class="note">Nothing in the queue for the selected facility.</p>
+  {% endif %}
+</div>
+
+<p style="margin-top:16px"><a href="/">&larr; Raise a request</a></p>
+</main>
+</body>
+</html>

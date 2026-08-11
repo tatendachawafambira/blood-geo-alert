@@ -15,7 +15,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from bga.api import dashboard, receipts
+from bga.api import dashboard, gateway_console, internal, receipts
 
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
@@ -28,4 +28,8 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 app.include_router(receipts.router)
+app.include_router(internal.router)
+app.include_router(gateway_console.router)
+# Last: its "/" would otherwise shadow nothing, but keeping the specific
+# routers ahead of it makes the ordering intent explicit.
 app.include_router(dashboard.router)

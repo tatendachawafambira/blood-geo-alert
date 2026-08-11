@@ -22,12 +22,48 @@ import random
 import threading
 from uuid import uuid4
 
+from pathlib import Path
+from tempfile import gettempdir
+
 from bga.adapters.base import SubmitResult
 from bga.config import settings
 
-# Module-level and mutable on purpose: the gateway console (Block 7b) sets this
-# at runtime to demonstrate retry and failover. Settings only seed it.
-failure_rate: float = settings.mock_failure_rate
+# An explicit in-process override. None means "follow the shared control file".
+# Tests assign to this and expect it to win; leaving it None in normal running
+# is what lets the gateway console drive the worker in another process.
+failure_rate: float | None = None
+
+# The gateway console runs in the API process; submissions happen in the
+# dispatch worker process. Setting a module global in one has no effect on the
+# other, so the console's failure-rate control would appear to work and change
+# nothing. A tiny file both processes read is the whole mechanism.
+#
+# Deliberately a file and not a table: this is a demonstration affordance for a
+# simulated gateway, and putting it in the schema would imply the real adapters
+# have a failure switch too.
+CONTROL_FILE = Path(gettempdir()) / "bga_mock_failure_rate"
+
+
+def current_failure_rate() -> float:
+    """The rate in force right now.
+
+    Precedence: an explicit in-process assignment, then the shared control
+    file, then settings. The in-process value wins so that a test setting it
+    is not silently overridden by a control file some earlier demo left behind.
+    """
+    if failure_rate is not None:
+        return failure_rate
+    try:
+        return max(0.0, min(1.0, float(CONTROL_FILE.read_text())))
+    except (OSError, ValueError):
+        return settings.mock_failure_rate
+
+
+def set_failure_rate(value: float) -> float:
+    """Set the rate for every process on this machine."""
+    value = max(0.0, min(1.0, float(value)))
+    CONTROL_FILE.write_text(str(value))
+    return value
 
 # Delivery receipt vocabulary this mock understands, mapped to alert states.
 _RECEIPT_STATES = {
@@ -62,7 +98,8 @@ class MockSmsAdapter:
                 accepted=True, provider_message_id=existing, error=None, retriable=False
             )
 
-        if failure_rate > 0 and random.random() < failure_rate:
+        rate = current_failure_rate()
+        if rate > 0 and random.random() < rate:
             # No id is recorded: nothing was accepted, so a retry gets a fresh
             # roll rather than inheriting a phantom message id.
             return SubmitResult(

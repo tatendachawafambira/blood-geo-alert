@@ -51,3 +51,31 @@ td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
 .mono{font-family:ui-monospace,Consolas,monospace;font-size:14px;word-break:break-all}
 .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700;
 background:var(--red);color:#fff}
+
+/* gateway console */
+.sim-banner{background:#fff4d6;border:1px solid #e0b978;border-left:6px solid #b8860b;
+border-radius:8px;padding:14px 16px;margin:0 0 18px;font-size:16px}
+.sim-banner code{font-family:ui-monospace,Consolas,monospace}
+form.inline{display:flex;gap:10px;margin:10px 0 0}
+button.rate{min-height:44px;padding:8px 20px;border:2px solid var(--red);border-radius:6px;
+background:#fff;color:var(--red);font-family:inherit;font-size:16px;font-weight:700;cursor:pointer}
+button.rate.on{background:var(--red);color:#fff}
+table.queue td.msg{font-size:14px;max-width:520px}
+table.queue .err{color:var(--red);font-size:13px}
+th.r,td.r{text-align:right}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:13px;font-weight:700;
+background:#e8e8e8;color:#333}
+.s-sent,.s-delivered{background:#dcefdc;color:#1d6b2f}
+.s-queued,.s-locked{background:#e6eef7;color:#1f4e79}
+.s-confirmed{background:#1d6b2f;color:#fff}
+.s-declined,.s-suppressed{background:#f0e2e2;color:#7a2020}
+.s-dead{background:#8C1C1C;color:#fff}
+
+/* map */
+#map{height:380px;margin:14px 0 0;border-radius:8px;border:1px solid var(--line);
+background:#eef1f4}
+.key{display:inline-block;width:12px;height:12px;border-radius:50%;margin:0 4px 0 12px;
+vertical-align:middle}
+.k-point{background:#8C1C1C}
+.k-facility{background:#2e75b6}
+.k-ward{background:#5aa84f}

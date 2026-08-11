@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Request {{ summary.blood_group }} - Blood Geo Alert</title>
 <link rel="stylesheet" href="/static/dashboard.css">
+<!-- Vendored, not a CDN: the venue may have no internet (see static/vendor/README). -->
+<link rel="stylesheet" href="/static/vendor/leaflet.css">
 </head>
 <body>
 <header>
@@ -36,6 +38,12 @@
   {% endif %}
   <p class="routing">Donors are routed here, not to {{ summary.facility_name }}.
     Blood collection happens at NBSZ collection points.</p>
+  {% if map.point_lat is not none %}
+  <div id="map" aria-label="Catchment map"></div>
+  <p class="note"><span class="key k-point"></span> collection point
+    <span class="key k-facility"></span> requesting facility
+    <span class="key k-ward"></span> donors alerted per ward</p>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -68,10 +76,10 @@
   <h2>Card 3 &middot; Alert progress</h2>
   <div class="counters">
     {% for state, n in progress.counts.items() %}
-    <div class="counter"><span class="v">{{ n }}</span><span class="k">{{ state|lower }}</span></div>
+    <div class="counter"><span class="v" data-count="{{ state }}">{{ n }}</span><span class="k">{{ state|lower }}</span></div>
     {% endfor %}
   </div>
-  <p class="pledged">{{ progress.pledged_label }}</p>
+  <p class="pledged" id="pledged">{{ progress.pledged_label }}</p>
   {% if progress.total == 0 %}
   <p class="note">No alerts have been created for this request.</p>
   {% endif %}
@@ -106,5 +114,64 @@
 
 </div>
 </main>
+
+<script src="/static/vendor/leaflet.js"></script>
+<script>
+// Card 3 counters, polled. The page is fully rendered server-side first, so
+// with JavaScript off it shows correct figures that simply do not move.
+(function () {
+  var url = "/api/requests/{{ summary.request_id }}/status";
+  function tick() {
+    fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+      document.querySelectorAll("[data-count]").forEach(function (el) {
+        el.textContent = d.counts[el.dataset.count] || 0;
+      });
+      document.getElementById("pledged").textContent = d.pledged_label;
+    }).catch(function () { /* a dropped poll is not worth a broken page */ });
+  }
+  setInterval(tick, 2000);
+})();
+
+// The catchment map. Guarded on window.L so a missing vendor file degrades to
+// no map rather than a broken page.
+{% if map.point_lat is not none %}
+(function () {
+  if (!window.L) { return; }
+  var point = [{{ map.point_lat }}, {{ map.point_lon }}];
+  var m = L.map("map", { scrollWheelZoom: false }).setView(point, 12);
+
+  // Tiles are best-effort. If the venue has no internet they simply do not
+  // arrive, and every circle below still draws on the flat background.
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+              { maxZoom: 18, attribution: "OpenStreetMap" }).addTo(m);
+
+  // The radius is centred on the COLLECTION POINT, never the hospital. That is
+  // ADR-001 and it is the point of the whole diagram.
+  L.circle(point, { radius: {{ summary.radius_metres or 0 }}, color: "#8C1C1C",
+                    weight: 2, fillColor: "#8C1C1C", fillOpacity: 0.07 }).addTo(m);
+  L.circleMarker(point, { radius: 9, color: "#8C1C1C", fillColor: "#8C1C1C",
+                          fillOpacity: 1, weight: 2 })
+   .addTo(m).bindTooltip({{ map.point_name|tojson }});
+
+  {% if map.facility_lat is not none %}
+  L.circleMarker([{{ map.facility_lat }}, {{ map.facility_lon }}],
+                 { radius: 8, color: "#1f4e79", fillColor: "#2e75b6",
+                   fillOpacity: 1, weight: 2 })
+   .addTo(m).bindTooltip({{ map.facility_name|tojson }});
+  {% endif %}
+
+  // Aggregates only. There is no donor marker here and no query that could
+  // produce one - the read model cannot return a donor row (ADR-005).
+  var wards = {{ wards|tojson }};
+  wards.forEach(function (w) {
+    if (w.lat === null || w.lon === null) { return; }
+    L.circleMarker([w.lat, w.lon],
+                   { radius: Math.min(26, 6 + Math.sqrt(w.alerted_count) * 4),
+                     color: "#3d7a2f", fillColor: "#5aa84f", fillOpacity: 0.65, weight: 2 })
+     .addTo(m).bindTooltip(w.ward_name + ": " + w.alerted_count + " donors alerted");
+  });
+})();
+{% endif %}
+</script>
 </body>
 </html>

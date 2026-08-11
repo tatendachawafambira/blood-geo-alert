@@ -26,7 +26,7 @@ import structlog
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from bga.api.deps import FACILITY_COOKIE, get_scoped_session, unscoped_session
@@ -192,6 +192,42 @@ def request_detail(
             "summary": summary,
             "progress": readmodel.alert_progress(session, request_id),
             "wards": readmodel.ward_aggregates(session, request_id),
+            "map": _map_coordinates(session, request_id),
             "donor_base_url": settings.donor_base_url,
         },
     )
+
+
+# Reference-data coordinates for the map: where the collection point is, and
+# where the facility that raised the request is. Queried here rather than added
+# to readmodel because readmodel is the ADR-005 enforcement point and its
+# surface is deliberately restricted to donor aggregates. These are neither -
+# a branch address and a hospital address are Internal data, not personal data.
+_MAP_COORDINATES = text(
+    """
+    SELECT cp.name AS point_name,
+           ST_Y(CAST(cp.location AS geometry)) AS point_lat,
+           ST_X(CAST(cp.location AS geometry)) AS point_lon,
+           f.name AS facility_name,
+           f.latitude  AS facility_lat,
+           f.longitude AS facility_lon
+      FROM core.deficit_request dr
+      JOIN core.facility f ON f.id = dr.facility_id
+      LEFT JOIN core.collection_point cp ON cp.id = dr.collection_point_id
+     WHERE dr.id = :request_id
+    """
+)
+
+
+def _map_coordinates(session: Session, request_id: UUID) -> dict:
+    row = session.execute(_MAP_COORDINATES, {"request_id": request_id}).first()
+    if row is None:
+        return {"point_lat": None, "facility_lat": None}
+    return {
+        "point_name": row.point_name,
+        "point_lat": row.point_lat,
+        "point_lon": row.point_lon,
+        "facility_name": row.facility_name,
+        "facility_lat": row.facility_lat,
+        "facility_lon": row.facility_lon,
+    }
