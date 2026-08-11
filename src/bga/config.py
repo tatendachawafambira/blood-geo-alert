@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     breaker_cooldown_seconds: float = Field(default=30.0, gt=0)
     breaker_success_threshold: int = Field(default=3, ge=1)
 
+    # --- Escalation scheduler --------------------------------------------
+    # Deliberately short for a pilot and a demonstration. Real windows are an
+    # operational decision for NBSZ, and FR-ADM-05 requires them to be
+    # configurable without a deployment.
+    scheduler_tick_seconds: float = Field(default=30.0, gt=0)
+    no_response_window_minutes: int = Field(default=10, ge=1)
+    facility_notify_minutes: int = Field(default=20, ge=1)
+    max_request_lifetime_minutes: int = Field(default=120, ge=1)
+
     # --- Domain configuration -------------------------------------------
     radius_bands: list[int] = [3000, 5000, 10000]
     frequency_cap_days: int = 14
