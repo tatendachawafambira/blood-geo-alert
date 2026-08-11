@@ -79,3 +79,15 @@ vertical-align:middle}
 .k-point{background:#8C1C1C}
 .k-facility{background:#2e75b6}
 .k-ward{background:#5aa84f}
+
+/* demo presets */
+.presets{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 18px;
+padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:10px}
+.presets-label{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+color:var(--muted);margin-right:4px}
+button.preset{min-height:42px;padding:8px 16px;border:2px solid var(--red);border-radius:6px;
+background:#fff;color:var(--red);font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+button.preset.on{background:var(--red);color:#fff}
+.reset-form{margin:0 0 0 auto}
+button.reset{min-height:42px;padding:8px 16px;border:2px solid #8a8a8a;border-radius:6px;
+background:#fff;color:#4a4a4a;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}

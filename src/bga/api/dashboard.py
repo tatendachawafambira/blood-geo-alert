@@ -17,7 +17,7 @@ Two things this page is careful about:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 
 from bga.api.deps import FACILITY_COOKIE, get_scoped_session, unscoped_session
 from bga.config import settings
-from bga.db import scoped_session
+from bga.db import SessionLocal, scoped_session
 from bga.domain import audit, readmodel
 from bga.domain.collection import resolve_collection_point
 from bga.domain.dispatch import create_alerts_and_outbox
@@ -75,6 +75,66 @@ def _parse_simulated(raw: str | None) -> datetime:
         return datetime.now(HARARE)
 
 
+def _next_weekday_at(hour: int) -> str:
+    moment = datetime.now(HARARE).replace(hour=hour, minute=0, second=0, microsecond=0)
+    while moment.weekday() >= 5 or moment < datetime.now(HARARE):
+        moment += timedelta(days=1)
+    return moment.strftime("%Y-%m-%dT%H:%M")
+
+
+def _next_sunday_at(hour: int) -> str:
+    moment = datetime.now(HARARE).replace(hour=hour, minute=0, second=0, microsecond=0)
+    while moment.weekday() != 6 or moment < datetime.now(HARARE):
+        moment += timedelta(days=1)
+    return moment.strftime("%Y-%m-%dT%H:%M")
+
+
+def _presets(facilities: list[Facility]) -> list[dict]:
+    """The three demo scenarios. Computed here so the dates are always right.
+
+    They populate the form and stop. Submitting for the operator would remove
+    the one moment in the demonstration where a person is visibly deciding to
+    ask four hundred strangers for blood.
+    """
+    by_name = {f.name: str(f.id) for f in facilities}
+
+    def find(prefix: str) -> str:
+        return next((v for k, v in by_name.items() if k.startswith(prefix)), "")
+
+    return [
+        {
+            "key": "A",
+            "label": "A - Harare Central, O+, urgent",
+            "facility_id": find("Harare Central"),
+            "blood_group": "O+",
+            "units_required": 4,
+            "urgency": "URGENT",
+            "simulated_time": _next_weekday_at(10),
+            "note": "the ordinary case: a weekday, a branch that is open",
+        },
+        {
+            "key": "B",
+            "label": "B - Parirenyatwa, O-, critical",
+            "facility_id": find("Parirenyatwa"),
+            "blood_group": "O-",
+            "units_required": 2,
+            "urgency": "CRITICAL",
+            "simulated_time": _next_weekday_at(10),
+            "note": "a rare group: few donors, and the exclusions matter more",
+        },
+        {
+            "key": "C",
+            "label": "C - Chitungwiza, O+, Sunday 21:00",
+            "facility_id": find("Chitungwiza"),
+            "blood_group": "O+",
+            "units_required": 4,
+            "urgency": "CRITICAL",
+            "simulated_time": _next_sunday_at(21),
+            "note": "nothing is open: the system refuses and sends nothing",
+        },
+    ]
+
+
 @router.get("/", response_class=HTMLResponse)
 def request_form(request: Request, session: Session = Depends(unscoped_session)):
     facilities = session.execute(select(Facility).order_by(Facility.name)).scalars().all()
@@ -87,8 +147,53 @@ def request_form(request: Request, session: Session = Depends(unscoped_session))
             "urgencies": URGENCIES,
             "now_local": datetime.now(HARARE).strftime("%Y-%m-%dT%H:%M"),
             "selected_facility": request.cookies.get(FACILITY_COOKIE, ""),
+            "presets": _presets(facilities),
         },
     )
+
+
+# Rows this endpoint clears. Donors, wards, facilities, collection points and
+# the audit trail are NOT here and must never be: the demo is repeatable, the
+# register and the history are not disposable.
+_RESET_SCOPED = (
+    "DELETE FROM core.outbox WHERE alert_id IN (SELECT id FROM core.alert)",
+    "DELETE FROM core.response_token WHERE alert_id IN (SELECT id FROM core.alert)",
+    "DELETE FROM core.alert",
+    "DELETE FROM core.deficit_request",
+)
+
+
+@router.post("/demo/reset")
+def demo_reset():
+    """Return the system to a clean slate between demonstration runs.
+
+    Deletes per facility scope because core.alert and core.deficit_request
+    carry FORCE row-level security: an unscoped DELETE removes nothing and
+    reports success, which would look exactly like a reset that worked.
+    """
+    with SessionLocal() as session:
+        facility_ids = session.execute(select(Facility.id)).scalars().all()
+
+    for facility_id in facility_ids:
+        with scoped_session(
+            facility_id=facility_id, actor_id="demo-reset", role="SYSTEM_ADMIN"
+        ) as session:
+            for statement in _RESET_SCOPED:
+                session.execute(text(statement))
+
+    with SessionLocal() as session, session.begin():
+        session.execute(text("DELETE FROM core.dead_letter"))
+        # Releases every contact reservation, so the next run can alert the
+        # same donors instead of finding them inside the frequency cap.
+        session.execute(text("UPDATE core.donor SET last_alerted_at = NULL"))
+
+    audit.emit(
+        action="DEMO_RESET",
+        actor="dashboard",
+        detail={"scope": "requests, alerts, tokens, outbox, dead letter, contact holds"},
+    )
+    log.warning("dashboard.demo_reset")
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.post("/requests")

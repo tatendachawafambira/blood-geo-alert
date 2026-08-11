@@ -16,6 +16,20 @@
 <h1>Raise a deficit request</h1>
 <p class="lede">Donors are matched around the nearest open NBSZ collection point, never around the hospital.</p>
 
+<div class="presets">
+  <span class="presets-label">Scenarios</span>
+  {% for p in presets %}
+  <button type="button" class="preset" title="{{ p.note }}"
+          data-facility="{{ p.facility_id }}" data-group="{{ p.blood_group }}"
+          data-units="{{ p.units_required }}" data-urgency="{{ p.urgency }}"
+          data-time="{{ p.simulated_time }}">{{ p.label }}</button>
+  {% endfor %}
+  <form method="post" action="/demo/reset" class="reset-form"
+        onsubmit="return confirm('Clear all requests, alerts and contact holds? Donors, reference data and the audit trail are kept.')">
+    <button type="submit" class="reset">Reset demo</button>
+  </form>
+</div>
+
 <form class="raise" method="post" action="/requests">
   <div class="grid">
     <div>
@@ -61,8 +75,26 @@
 </form>
 
 {% if not facilities %}
-<p class="note">No facilities are registered yet. Run the Block 8 seed scripts first.</p>
+<p class="note">No facilities are registered yet. Run scripts/seed_reference.py first.</p>
 {% endif %}
 </main>
+
+<script>
+// Presets populate the form and stop. Submitting on the operator's behalf
+// would remove the one moment in the demonstration where a person visibly
+// decides to ask several hundred strangers for blood.
+document.querySelectorAll(".preset").forEach(function (button) {
+  button.addEventListener("click", function () {
+    var d = button.dataset;
+    if (d.facility) { document.getElementById("facility_id").value = d.facility; }
+    document.getElementById("blood_group").value = d.group;
+    document.getElementById("units_required").value = d.units;
+    document.getElementById("urgency").value = d.urgency;
+    document.getElementById("simulated_time").value = d.time;
+    document.querySelectorAll(".preset").forEach(function (b) { b.classList.remove("on"); });
+    button.classList.add("on");
+  });
+});
+</script>
 </body>
 </html>
