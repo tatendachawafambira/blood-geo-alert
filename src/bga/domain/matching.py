@@ -64,11 +64,31 @@ ELIGIBLE = "ELIGIBLE"
 #                                   is re-checked at the moment of the write
 #   ORDER BY p.metres             - nearest donors first, then LIMIT applies
 #   RETURNING                     - this, and only this, is the cohort
+#
+# THE CTE IS NOT DECORATION. The specified form of this statement was
+#
+#     UPDATE core.donor d SET ... WHERE d.id IN (SELECT ... LIMIT n
+#                                                FOR UPDATE OF d2 SKIP LOCKED)
+#
+# and it does not bound the update to n rows. EXPLAIN shows PostgreSQL is free
+# to plan the sublink as the INNER side of a nested-loop semi join, which
+# re-executes it once per outer donor row. Each execution honours LIMIT n, but
+# SKIP LOCKED makes it skip the rows the previous execution just locked, so
+# every pass returns a DIFFERENT n rows and the semi join accumulates far more
+# than the cap. Measured: 12 donors reserved against a cap of 10, in a single
+# band, with no escalation.
+#
+# It is plan-dependent, which is worse than being wrong. With other statistics
+# the planner hashes the sublink, evaluates it once, and the cap appears to
+# hold - so the defect is invisible in testing and breaks FR-GEO-07 in
+# production, where the register is large enough to change the plan.
+#
+# AS MATERIALIZED is an optimisation fence: the cohort is computed exactly
+# once, and the rows it locked are the rows that get updated. Every clause
+# below is otherwise unchanged.
 _RESERVE = text(
     """
-    UPDATE core.donor d
-       SET last_alerted_at = :now
-     WHERE d.id IN (
+    WITH cohort AS MATERIALIZED (
            SELECT d2.id
              FROM core.donor d2
              JOIN core.ward_collection_proximity p ON p.ward_id = d2.ward_id
@@ -87,7 +107,10 @@ _RESERVE = text(
             ORDER BY p.metres
             LIMIT :dispatch_cap
               FOR UPDATE OF d2 SKIP LOCKED
-           )
+         )
+    UPDATE core.donor d
+       SET last_alerted_at = :now
+     WHERE d.id IN (SELECT id FROM cohort)
        AND (d.last_alerted_at IS NULL OR d.last_alerted_at < :cap_cutoff)
     RETURNING d.id, d.preferred_language, d.msisdn_ciphertext
     """

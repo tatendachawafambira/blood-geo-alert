@@ -18,7 +18,7 @@ import pytest
 from sqlalchemy import cast, func, text
 
 from bga.config import settings
-from bga.domain.matching import match_and_reserve
+from bga.domain.matching import _RESERVE, match_and_reserve
 from bga.models.donor import Donor, DonorEligibility
 from bga.models.reference import CollectionPoint, Geography, Ward
 
@@ -251,16 +251,57 @@ def test_a_donor_outside_the_widest_band_is_never_matched(db_session, catchment)
 # --- the dispatch cap ------------------------------------------------------
 
 
-def test_cohort_is_capped_at_units_required_times_multiplier(db_session, catchment):
+@pytest.mark.parametrize(
+    ("available", "units"),
+    [(12, 1), (15, 1), (45, 4), (100, 4), (7, 1)],
+)
+def test_cohort_is_capped_at_units_required_times_multiplier(
+    db_session, catchment, available, units
+):
+    """FR-GEO-07, at several sizes deliberately.
+
+    A single size is not enough. The original form of the reservation -
+    UPDATE ... WHERE id IN (SELECT ... LIMIT n FOR UPDATE SKIP LOCKED) - does
+    not bound the update to n rows: PostgreSQL may plan the sublink as the
+    inner side of a nested-loop semi join and re-execute it per outer row,
+    with SKIP LOCKED handing back different rows each time. Whether it does
+    depends on table statistics, so at 15 donors the cap appeared to hold and
+    at 12 it did not. Testing one size is how that reaches production.
+    """
     cp, wards = catchment
-    for _ in range(15):
+    for _ in range(available):
         add_donor(db_session, wards["near"])
 
-    result = match_and_reserve(db_session, cp.id, "O", "POS", 1, NOW)
+    result = match_and_reserve(db_session, cp.id, "O", "POS", units, NOW)
 
-    assert len(result.donor_ids) == 1 * settings.dispatch_cap_multiplier == 10
-    assert result.stats["reserved"] == 10
-    assert result.stats["eligible"] == 15, "all 15 were eligible; only 10 were taken"
+    cap = units * settings.dispatch_cap_multiplier
+    assert len(result.donor_ids) == min(cap, available)
+    assert result.stats["reserved"] == min(cap, available)
+    assert len(set(result.donor_ids)) == len(result.donor_ids), "no donor reserved twice"
+
+
+def test_the_reservation_is_evaluated_exactly_once(db_session, catchment):
+    """The plan must not re-execute the locking subquery per outer row."""
+    cp, wards = catchment
+    for _ in range(30):
+        add_donor(db_session, wards["near"])
+
+    plan = "\n".join(
+        db_session.execute(
+            text("EXPLAIN " + str(_RESERVE)),
+            {
+                "now": NOW,
+                "cp_id": cp.id,
+                "radius": 3000,
+                "abo": "O",
+                "rh": "POS",
+                "today": NOW.date(),
+                "cap_cutoff": NOW - timedelta(days=settings.frequency_cap_days),
+                "dispatch_cap": 10,
+            },
+        ).scalars()
+    )
+    assert "CTE cohort" in plan, f"the cohort is no longer materialised:\n{plan}"
 
 
 # --- escalation ------------------------------------------------------------

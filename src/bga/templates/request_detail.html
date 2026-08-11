@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Request {{ summary.blood_group }} - Blood Geo Alert</title>
+<link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+<header>
+  <div class="title">Blood Geo Alert</div>
+  <div class="sub">{{ summary.facility_name }} &middot; {{ summary.blood_group }} &middot;
+    {{ summary.units_required }} units &middot; {{ summary.urgency|capitalize }}</div>
+</header>
+
+<main>
+<h1>Request detail <span class="badge">{{ summary.state.replace('_',' ') }}</span></h1>
+<p class="lede">Raised {{ summary.elapsed_seconds }} seconds ago &middot;
+  <a href="/">raise another</a></p>
+
+<div class="cards">
+
+{# ---- CARD 1: collection point, or the refusal ---- #}
+{% if summary.state == 'REJECTED_NO_POINT' %}
+<div class="card wide amber">
+  <h2>No collection point open</h2>
+  <p class="reason">{{ summary.rejection_reason }}</p>
+  <p>No alerts were sent. The facility has been notified to pursue alternative sourcing.</p>
+</div>
+{% else %}
+<div class="card">
+  <h2>Card 1 &middot; Collection point</h2>
+  <p class="point-name">{{ summary.collection_point_name }}</p>
+  {% if summary.distance_km is not none %}
+  <p class="note">{{ summary.distance_km }} km from {{ summary.facility_name }}</p>
+  {% endif %}
+  <p class="routing">Donors are routed here, not to {{ summary.facility_name }}.
+    Blood collection happens at NBSZ collection points.</p>
+</div>
+{% endif %}
+
+{# ---- CARD 2: matching ---- #}
+<div class="card">
+  <h2>Card 2 &middot; Matching</h2>
+  {% set s = summary.matched_stats %}
+  {% if s %}
+  <table>
+    <tr><th>Verified donors in radius</th><td class="n">{{ s.verified_in_radius|default(0) }}</td></tr>
+    <tr><th>Self-declared, excluded</th><td class="n">{{ s.self_declared_in_radius|default(0) }}</td></tr>
+    <tr><th>Eligible</th><td class="n">{{ s.eligible|default(0) }}</td></tr>
+    {% for reason, count in (s.excluded|default({})).items() %}
+    <tr><th>&mdash; {{ reason.replace('_',' ')|lower }}</th><td class="n">{{ count }}</td></tr>
+    {% endfor %}
+    <tr><th>Radius band used</th><td class="n">{{ summary.radius_metres }} m</td></tr>
+    <tr><th>Escalated</th><td class="n">{{ 'yes' if s.escalated else 'no' }}</td></tr>
+    <tr><th><strong>Reserved</strong></th><td class="n">{{ s.reserved|default(0) }}</td></tr>
+  </table>
+  <p class="note"><strong>Reserved</strong> is the number of donors this request holds a
+    contact reservation for, and is the number of messages queued. It can be lower than
+    the eligible count when another request reserved the same donors at the same moment.</p>
+  {% else %}
+  <p class="note">No matching was performed for this request.</p>
+  {% endif %}
+</div>
+
+{# ---- CARD 3: alert progress ---- #}
+<div class="card">
+  <h2>Card 3 &middot; Alert progress</h2>
+  <div class="counters">
+    {% for state, n in progress.counts.items() %}
+    <div class="counter"><span class="v">{{ n }}</span><span class="k">{{ state|lower }}</span></div>
+    {% endfor %}
+  </div>
+  <p class="pledged">{{ progress.pledged_label }}</p>
+  {% if progress.total == 0 %}
+  <p class="note">No alerts have been created for this request.</p>
+  {% endif %}
+</div>
+
+{# ---- CARD 4: links ---- #}
+<div class="card">
+  <h2>Card 4 &middot; Operations</h2>
+  <p><a href="/gateway">Gateway console</a> &mdash; the outbox, delivery states and the
+    simulated provider.</p>
+  <p class="note">Audit trail correlation id:</p>
+  <p class="mono">{{ summary.request_id }}</p>
+  <p class="note">The audit trail is queried with this id by the data protection role.
+    This application cannot read it: the app database role holds no grant on the audit
+    schema at all, which is what makes the record something the application cannot rewrite.</p>
+</div>
+
+{# ---- ward aggregates ---- #}
+{% if wards %}
+<div class="card wide">
+  <h2>Alerted donors by ward</h2>
+  <table>
+    <tr><th>Ward</th><th style="text-align:right">Donors alerted</th></tr>
+    {% for w in wards %}
+    <tr><th>{{ w.ward_name }}</th><td class="n">{{ w.alerted_count }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="note">Counts per ward, never per donor. Wards with fewer than three alerted
+    donors are combined, so that a small count cannot identify an individual.</p>
+</div>
+{% endif %}
+
+</div>
+</main>
+</body>
+</html>

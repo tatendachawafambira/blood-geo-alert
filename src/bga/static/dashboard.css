@@ -1,0 +1,53 @@
+/* Clinician dashboard. Projector-first: nothing under 15px, high contrast,
+   no external requests, no web fonts. */
+:root{--red:#8C1C1C;--ink:#141414;--muted:#4a4a4a;--line:#d9d9d9;--bg:#f6f6f4;
+--amber:#8a5200;--amber-bg:#fdf3e2;--ok:#1d6b2f}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+font-size:16px;line-height:1.45;color:var(--ink);background:var(--bg)}
+header{background:var(--red);color:#fff;padding:12px 24px}
+header .title{font-size:20px;font-weight:700;letter-spacing:.2px}
+header .sub{font-size:15px;opacity:.9}
+main{max-width:1180px;margin:0 auto;padding:20px 24px 32px}
+a{color:var(--red)}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:17px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.lede{color:var(--muted);margin:0 0 20px}
+
+/* form */
+form.raise{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+label{display:block;font-size:15px;font-weight:600;margin:0 0 6px}
+select,input{width:100%;min-height:46px;padding:9px 11px;font-family:inherit;font-size:16px;
+border:1px solid #9a9a9a;border-radius:6px;background:#fff;color:var(--ink)}
+select:focus,input:focus{outline:3px solid var(--red);outline-offset:1px}
+.hint{font-size:15px;color:var(--muted);margin:6px 0 0}
+button.submit{margin-top:18px;min-height:52px;padding:12px 28px;border:0;border-radius:6px;
+background:var(--red);color:#fff;font-family:inherit;font-size:17px;font-weight:700;cursor:pointer}
+
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px}
+.card.wide{grid-column:1/-1}
+.point-name{font-size:22px;font-weight:700;color:var(--red);margin:0 0 2px}
+.routing{margin:12px 0 0;padding:12px;background:var(--bg);border-left:4px solid var(--red);
+font-size:15px}
+.amber{background:var(--amber-bg);border:1px solid #e0b978;border-left:6px solid var(--amber);
+border-radius:10px;padding:18px}
+.amber h2{color:var(--amber)}
+.amber .reason{font-size:17px;font-weight:600;margin:0 0 10px}
+
+/* figures */
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #ececec}
+th{color:var(--muted);font-weight:600}
+td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin:0 0 14px}
+.counter{background:var(--bg);border-radius:8px;padding:10px;text-align:center}
+.counter .v{display:block;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.counter .k{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.pledged{font-size:20px;font-weight:700;color:var(--ok);margin:0}
+.note{font-size:15px;color:var(--muted);margin:10px 0 0}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:14px;word-break:break-all}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700;
+background:var(--red);color:#fff}

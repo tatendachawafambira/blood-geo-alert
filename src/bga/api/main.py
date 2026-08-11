@@ -10,9 +10,14 @@ Block 7 adds the dashboard, gateway console and internal endpoints here.
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from pathlib import Path
 
-from bga.api import receipts
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+from bga.api import dashboard, receipts
+
+_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 app = FastAPI(
     title="Blood Geo Alert",
@@ -20,4 +25,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
 app.include_router(receipts.router)
+app.include_router(dashboard.router)

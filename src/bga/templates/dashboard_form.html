@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Raise a deficit request - Blood Geo Alert</title>
+<link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+<header>
+  <div class="title">Blood Geo Alert</div>
+  <div class="sub">National Blood Service Zimbabwe &middot; clinician dashboard</div>
+</header>
+
+<main>
+<h1>Raise a deficit request</h1>
+<p class="lede">Donors are matched around the nearest open NBSZ collection point, never around the hospital.</p>
+
+<form class="raise" method="post" action="/requests">
+  <div class="grid">
+    <div>
+      <label for="facility_id">Facility</label>
+      <select id="facility_id" name="facility_id" required>
+        {% for f in facilities %}
+        <option value="{{ f.id }}" {% if f.id == selected_facility %}selected{% endif %}>{{ f.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label for="blood_group">Blood group</label>
+      <select id="blood_group" name="blood_group" required>
+        {% for g in blood_groups %}
+        <option value="{{ g }}" {% if g == 'O+' %}selected{% endif %}>{{ g }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label for="units_required">Units required</label>
+      <input id="units_required" name="units_required" type="number" min="1" max="50" value="4" required>
+    </div>
+
+    <div>
+      <label for="urgency">Urgency</label>
+      <select id="urgency" name="urgency" required>
+        {% for u in urgencies %}
+        <option value="{{ u }}" {% if u == 'URGENT' %}selected{% endif %}>{{ u|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label for="simulated_time">Simulated time</label>
+      <input id="simulated_time" name="simulated_time" type="datetime-local" value="{{ now_local }}" required>
+      <p class="hint">Used for opening hours and eligibility. Africa/Harare.</p>
+    </div>
+  </div>
+
+  <button class="submit" type="submit">Raise request</button>
+</form>
+
+{% if not facilities %}
+<p class="note">No facilities are registered yet. Run the Block 8 seed scripts first.</p>
+{% endif %}
+</main>
+</body>
+</html>
