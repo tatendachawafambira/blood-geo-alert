@@ -1,0 +1,52 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: bga_owner
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: bga
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bga_owner"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # The suite drops and rebuilds bga_test from migrations, connecting as the
+    # owner only. The other role URLs must parse but are never opened.
+    env:
+      DATABASE_URL_OWNER: postgresql+psycopg://bga_owner:ci_only@127.0.0.1:5432/bga
+      DATABASE_URL_APP: postgresql+psycopg://bga_owner:ci_only@127.0.0.1:5432/bga
+      DATABASE_URL_AUDIT: postgresql+psycopg://bga_owner:ci_only@127.0.0.1:5432/bga
+      DONOR_BASE_URL: http://127.0.0.1:8001
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      # Throwaway key material, generated per run and never stored.
+      - name: Generate keys
+        run: |
+          echo "BGA_FIELD_KEY=$(python -c 'import base64,os; print(base64.b64encode(os.urandom(32)).decode())')" >> "$GITHUB_ENV"
+          echo "BGA_BLIND_PEPPER=$(python -c 'import base64,os; print(base64.b64encode(os.urandom(32)).decode())')" >> "$GITHUB_ENV"
+
+      - name: Test
+        run: pytest -q

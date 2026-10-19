@@ -1,4 +1,11 @@
 .venv/
 .env
 __pycache__/
+.pytest_cache/
 *.egg-info/
+
+# Local demonstration helpers and presentation material - not part of the codebase
+demo_link.py
+set_demo_ip.py
+VIDEO_SCRIPT.md
+*.pptx

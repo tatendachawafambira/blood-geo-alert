@@ -1,5 +1,7 @@
 # Blood Geo Alert — Release 1.0
 
+[![tests](https://github.com/tatendachawafambira/blood-geo-alert/actions/workflows/tests.yml/badge.svg)](https://github.com/tatendachawafambira/blood-geo-alert/actions/workflows/tests.yml)
+
 Geo-fenced blood donor mobilisation for Zimbabwe.
 
 A hospital records a blood deficit. The system resolves the nearest **open NBSZ
@@ -89,7 +91,8 @@ python -c "import base64,os; print('BGA_FIELD_KEY='+base64.b64encode(os.urandom(
 python -c "import base64,os; print('BGA_BLIND_PEPPER='+base64.b64encode(os.urandom(32)).decode())"
 ```
 
-`.env` in the project root, listed in `.gitignore`:
+`.env` in the project root, listed in `.gitignore`. Copy `.env.example`
+as a starting point:
 
 ```
 BGA_FIELD_KEY=...
@@ -101,6 +104,14 @@ DATABASE_URL_DONOR=postgresql+psycopg://bga_donor:donor_pw_change_me@127.0.0.1:5
 ```
 
 Check `git status` shows `.env` untracked before your first commit.
+
+**Real SMS (optional).** The default gateway is `mock`, which sends nothing.
+Two demonstration gateways deliver a genuine SMS: `android` (a handset running
+[android-sms-gateway](https://github.com/capcom6/android-sms-gateway) on the
+local network) and `twilio`. Both refuse any recipient not on `SMS_ALLOWLIST`,
+and an empty allowlist blocks every send — the seeded register holds
+structurally valid numbers that belong to real people. See `.env.example` for
+the settings and `python scripts/check_sms_setup.py` to verify them.
 
 ### 4. Install and migrate
 
@@ -127,8 +138,8 @@ quote stay true — `--seed random` for a different draw.
 
 ### 6. Map assets
 
-Two files, vendored rather than fetched from a CDN. See
-`src/bga/static/vendor/README.md`.
+Leaflet 1.9.4 is vendored in `src/bga/static/vendor/` rather than fetched from
+a CDN, so the map works offline. To refresh it:
 
 ```powershell
 curl.exe -L -o src/bga/static/vendor/leaflet.js  https://unpkg.com/leaflet@1.9.4/dist/leaflet.js
@@ -167,7 +178,7 @@ a Postgres advisory lock.
 ## Tests
 
 ```powershell
-pytest -q                                        # 253 tests
+pytest -q                                        # 258 tests
 pytest tests/test_matching.py -k concurrency -v  # the most important one
 ```
 
@@ -223,11 +234,12 @@ src/bga/
   crypto/field.py  AES-256-GCM + HMAC blind index
   domain/          geo, proximity, eligibility, collection, matching,
                    consent, dispatch, tokens, audit, readmodel
-  adapters/        base (Protocol), mock_sms, africastalking (skeleton)
+  adapters/        base (Protocol), mock_sms, africastalking (skeleton),
+                   android_sms + twilio_sms behind allowlist (demonstration)
   api/             main, dashboard, gateway_console, internal, receipts,
                    donor_main, donor, deps
   workers/         dispatch_worker, scheduler
 alembic/versions/  schema, under migration
 scripts/           seeding, reconciliation, acceptance verification
-tests/             253 tests
+tests/             258 tests
 ```
