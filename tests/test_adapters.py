@@ -54,9 +54,15 @@ def test_get_adapter_returns_the_same_instance_each_time():
 
 def test_unknown_gateway_raises_rather_than_falling_back():
     """A misconfigured gateway name must not present as messages that appear
-    to send and never arrive."""
+    to send and never arrive.
+
+    The name here must be one that will never become a real adapter. This test
+    previously used "twilio", which stopped testing anything the day a Twilio
+    adapter was added - the assertion passed for the wrong reason right up
+    until it failed.
+    """
     with pytest.raises(ValueError, match="unknown gateway"):
-        get_adapter("twilio")
+        get_adapter("carrier-pigeon")
 
 
 def test_gateway_names_come_from_settings():
@@ -240,3 +246,64 @@ def test_africastalking_adds_no_network_dependency():
     source = inspect.getsource(module)
     for banned in ("import requests", "import httpx", "urllib.request", "socket."):
         assert banned not in source
+
+
+# --- demonstration-gateway allowlist ---------------------------------------
+# The seeded register holds 800 structurally valid Zimbabwean numbers using
+# real network prefixes. A demonstration gateway pointed at it without this
+# control would send unsolicited SMS to strangers, and a single four-unit
+# request matches up to forty donors. These tests exist so that control cannot
+# be removed or weakened without a test going red.
+
+
+def _android(monkeypatch, allowlist):
+    from bga.adapters import allowlist as al
+    from bga.adapters import android_sms
+
+    monkeypatch.setattr(al.settings, "sms_allowlist", allowlist, raising=False)
+    monkeypatch.setattr(
+        android_sms.settings, "android_sms_url", "http://127.0.0.1:9", raising=False
+    )
+    return android_sms.AndroidSmsAdapter()
+
+
+def test_empty_allowlist_blocks_every_real_send(monkeypatch):
+    """Empty must mean 'send nothing', never 'send to anyone'.
+
+    A forgotten setting has to fail safe. The opposite default would make the
+    failure silent, irreversible and aimed at people who never consented.
+    """
+    result = _android(monkeypatch, "").submit("+263771234567", "body", "key")
+    assert result.accepted is False
+    assert result.retriable is False
+    assert "SMS_ALLOWLIST" in result.error
+
+
+def test_number_not_on_the_allowlist_is_suppressed(monkeypatch):
+    """A seeded donor's number must not be messaged even when matching picks it."""
+    adapter = _android(monkeypatch, "+263771234567")
+    result = adapter.submit("+263790000001", "body", "key")
+    assert result.accepted is False
+    assert result.retriable is False, "retrying a suppression is pure noise"
+
+
+def test_suppression_never_echoes_the_number(monkeypatch):
+    """The blocked number belongs to someone. It must not leak into an error."""
+    adapter = _android(monkeypatch, "+263771234567")
+    result = adapter.submit("+263790000001", "body", "key")
+    assert "790000001" not in (result.error or "")
+
+
+def test_allowlisted_number_passes_the_guard(monkeypatch):
+    """The control must not block the number it exists to permit."""
+    adapter = _android(monkeypatch, "+263771234567")
+    result = adapter.submit("+263771234567", "body", "key")
+    # Reaches the transport and fails there, rather than being suppressed.
+    assert "allowlist" not in (result.error or "").lower()
+
+
+def test_allowlist_accepts_local_format_and_several_entries(monkeypatch):
+    """0771234567 and +263771234567 are the same person."""
+    adapter = _android(monkeypatch, "0771234567, +263712222222")
+    result = adapter.submit("+263771234567", "body", "key")
+    assert "allowlist" not in (result.error or "").lower()

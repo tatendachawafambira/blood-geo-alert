@@ -109,6 +109,49 @@ def _opening_hours(point) -> str:
     return f"Open today {point.open_hour:02d}:00 to {point.close_hour:02d}:00"
 
 
+# The base URL a QR code must encode is the address the DONOR's phone will use,
+# which changes whenever this laptop moves between networks. settings is read
+# once at process start, so a server left running across a network change hands
+# out QR codes pointing at the previous network - the phone then hangs on an
+# address that no longer exists, and nothing in the logs says why.
+#
+# Re-read it from .env, cached on the file's modification time: one stat() per
+# request, and a network change takes effect without a restart.
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+_base_url_cache: tuple[float, str] | None = None
+
+
+def current_base_url() -> str:
+    """The donor base URL as .env says it is RIGHT NOW."""
+    global _base_url_cache
+    try:
+        stamp = _ENV_FILE.stat().st_mtime
+    except OSError:
+        return settings.donor_base_url
+
+    if _base_url_cache is not None and _base_url_cache[0] == stamp:
+        return _base_url_cache[1]
+
+    value = settings.donor_base_url
+    try:
+        for line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+            if line.startswith("DONOR_BASE_URL="):
+                value = line.split("=", 1)[1].strip()
+                break
+    except OSError:
+        pass
+
+    if value != settings.donor_base_url:
+        log.warning(
+            "donor.base_url.refreshed",
+            was=settings.donor_base_url,
+            now=value,
+            note=".env changed since this process started; QR codes now use the new address",
+        )
+    _base_url_cache = (stamp, value)
+    return value
+
+
 @router.get("/d/{token}", response_class=HTMLResponse)
 def show_alert(request: Request, token: str) -> Response:
     """Render the response page. Does NOT consume the token.
@@ -202,7 +245,7 @@ def token_qr(token: str) -> Response:
     """
     import qrcode
 
-    image = qrcode.make(f"{settings.donor_base_url}/d/{token}")
+    image = qrcode.make(f"{current_base_url()}/d/{token}")
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return Response(content=buffer.getvalue(), media_type="image/png")

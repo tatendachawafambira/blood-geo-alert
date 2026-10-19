@@ -8,39 +8,60 @@
 </head>
 <body>
 <header>
-  <div class="title">Blood Geo Alert</div>
-  <div class="sub">Gateway console &middot; dispatch queue</div>
+  <div class="brand">
+    <div class="title">Blood Geo Alert</div>
+    <div class="sub">National Blood Service Zimbabwe</div>
+  </div>
+  <nav class="hdr-nav">
+    <a href="/">Requests</a>
+    <a href="/gateway" class="on">Dispatch queue</a>
+  </nav>
 </header>
 
 <main>
-<div class="sim-banner">
-  <strong>SIMULATED GATEWAY &mdash; no real SMS is sent.</strong>
-  In production this is the Africa&rsquo;s Talking adapter (see <code>adapters/</code>).
+<div class="page-head">
+  <div>
+    <h1>Dispatch queue</h1>
+    <p class="lede">Outbox state, delivery receipts and provider health.</p>
+  </div>
 </div>
+
+{% if primary == 'mock' %}
+<div class="sim-banner">
+  <strong>Simulated provider.</strong> No message leaves this machine. Configure
+  <code>PRIMARY_GATEWAY</code> to dispatch for real.
+</div>
+{% endif %}
 
 <div class="cards">
   <div class="card">
     <h2>Provider</h2>
     <table>
-      <tr><th>Primary</th><td class="n">{{ primary }}</td></tr>
-      <tr><th>Secondary</th><td class="n">{{ secondary }}</td></tr>
+      <tr><th>Primary provider</th><td class="n">{{ primary }}</td></tr>
+      <tr><th>Failover provider</th><td class="n">{{ secondary }}</td></tr>
       <tr><th>Dead letter queue</th><td class="n">{{ dead_letters }}</td></tr>
     </table>
   </div>
 
+  {# Fault injection is meaningful only against the simulated provider. Against
+     a real gateway the control would be a way to deliberately fail real
+     messages, which is not something an operational screen should offer. #}
+  {% if primary == 'mock' %}
   <div class="card">
-    <h2>Simulated failure rate</h2>
-    <p class="note">Currently <strong>{{ '%.0f'|format(failure_rate * 100) }}%</strong>.
-      Applies to the dispatch worker process too.</p>
+    <h2>Fault injection</h2>
+    <p class="note">Injected failure rate is
+      <strong>{{ '%.0f'|format(failure_rate * 100) }}%</strong>, applied in the dispatch
+      worker as well as here.</p>
     <form method="post" action="/gateway/failure-rate" class="inline">
       {% for r in failure_rates %}
       <button class="rate {% if r == failure_rate %}on{% endif %}" type="submit"
               name="rate" value="{{ r }}">{{ '%.0f'|format(r * 100) }}%</button>
       {% endfor %}
     </form>
-    <p class="note">30% shows exponential backoff with jitter and the circuit breaker
-      opening. 100% drives messages to the dead letter queue.</p>
+    <p class="note">30% exercises exponential backoff with jitter and opens the circuit
+      breaker. 100% drives messages to the dead letter queue.</p>
   </div>
+  {% endif %}
 </div>
 
 <div class="card wide" style="margin-top:16px">

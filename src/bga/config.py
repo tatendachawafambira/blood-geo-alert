@@ -58,6 +58,32 @@ class Settings(BaseSettings):
     # otherwise mean either "never fail" or "always fail" silently.
     mock_failure_rate: float = Field(default=0.0, ge=0.0, le=1.0)
 
+    # The only numbers a DEMONSTRATION gateway may actually message. Comma
+    # separated E.164. Empty blocks every real send, which is deliberate: the
+    # seeded register holds structurally valid Zimbabwean numbers belonging to
+    # real people, and a forgotten setting must not message them. Ignored by
+    # the mock (which sends nothing) and by africastalking (whose register will
+    # hold consented donors). See adapters/allowlist.py.
+    sms_allowlist: str = ""
+
+    # Twilio, for a demonstration that delivers a real SMS. Optional: absent
+    # values are caught by the adapter with an actionable message rather than
+    # by a validation error at import, so the system still starts on the mock.
+    # repr=False keeps the token out of every settings repr and traceback.
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = Field(default="", repr=False)
+    twilio_from_number: str = ""
+    # Only set this when a public HTTPS callback exists. Without one, delivery
+    # receipts never arrive and alerts settle at SENT - which FR-MSG-06 reports
+    # as unconfirmed, never as failed.
+    twilio_status_callback: str = ""
+
+    # An Android handset running an SMS gateway app on the local network.
+    android_sms_url: str = ""
+    android_sms_username: str = ""
+    android_sms_password: str = Field(default="", repr=False)
+    android_sms_webhook_secret: str = Field(default="", repr=False)
+
     # --- Dispatch worker -------------------------------------------------
     dispatch_batch_size: int = Field(default=20, ge=1)
     worker_poll_seconds: float = Field(default=2.0, gt=0)

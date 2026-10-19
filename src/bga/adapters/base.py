@@ -89,11 +89,18 @@ def get_adapter(name: str) -> GatewayAdapter:
     # Imported here rather than at module scope so the two adapter modules can
     # import SubmitResult from this one without a circular import.
     from bga.adapters.africastalking import AfricasTalkingAdapter
+    from bga.adapters.android_sms import AndroidSmsAdapter
     from bga.adapters.mock_sms import MockSmsAdapter
+    from bga.adapters.twilio_sms import TwilioAdapter
 
     builders = {
         "mock": MockSmsAdapter,
         "africastalking": AfricasTalkingAdapter,
+        # Demonstration gateways. Both send a genuinely delivered SMS; neither
+        # is the production route. See each module's docstring for what it
+        # gives up relative to africastalking.
+        "twilio": TwilioAdapter,
+        "android": AndroidSmsAdapter,
     }
     if name not in builders:
         raise ValueError(

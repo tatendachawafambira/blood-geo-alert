@@ -1,93 +1,433 @@
-/* Clinician dashboard. Projector-first: nothing under 15px, high contrast,
-   no external requests, no web fonts. */
-:root{--red:#8C1C1C;--ink:#141414;--muted:#4a4a4a;--line:#d9d9d9;--bg:#f6f6f4;
---amber:#8a5200;--amber-bg:#fdf3e2;--ok:#1d6b2f}
+/* Blood Geo Alert - clinician interface.
+
+   Visual language: a light, airy application shell. Near-white cool-grey page,
+   white surfaces with large corner radii, very soft diffuse shadows, hairline
+   dividers, and the brand red used SPARINGLY - active states, key figures, a
+   thin accent bar - rather than as large fills.
+
+   That restraint is the whole idea, and it matters more here than it would with
+   a mid-tone brand. #8C1C1C is a dark red; as a full-bleed header or a filled
+   panel it dominates a room and turns a working screen into a poster. As a
+   4px accent bar under a figure, it reads as precision.
+
+   Constraints unchanged: no external requests, no web fonts, no icon set, one
+   cached stylesheet over the LAN, and every primary workflow completes at
+   360px (FR-DSH-06). */
+
+:root{
+  /* brand - unchanged values */
+  --red:#8C1C1C;
+  --red-600:#a52626;
+  --red-700:#6f1616;
+  --red-050:#fdf6f6;
+  --red-100:#f6e3e3;
+
+  /* Cool neutrals. The reference language pairs a saturated accent with grey
+     that leans blue; against a warm red it keeps the page from going muddy. */
+  --ink:#16191d;
+  --ink-2:#333942;
+  --muted:#55606e;
+  --faint:#6b7480;
+  --line:#e9ebef;
+  --line-2:#dcdfe5;
+  --bg:#f4f6f8;
+  --surface:#fff;
+
+  --ok:#1d6b2f;    --ok-050:#eef6ef;  --ok-100:#cfe4d2;
+  --amber:#8a5200; --amber-050:#fdf6ea;--amber-100:#f0dcb8;
+  --blue:#1f4e79;  --blue-050:#eef3f9; --blue-100:#cfdcea;
+
+  --r-xs:8px; --r-sm:10px; --r:14px; --r-lg:20px; --pill:999px;
+
+  /* Soft and wide, never dark. A tight dark shadow reads as a 2010 card. */
+  --sh-1:0 1px 2px rgba(16,24,40,.04);
+  --sh-2:0 1px 2px rgba(16,24,40,.04), 0 8px 24px -10px rgba(16,24,40,.12);
+  --sh-3:0 2px 4px rgba(16,24,40,.04), 0 16px 40px -12px rgba(16,24,40,.16);
+}
+
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-font-size:16px;line-height:1.45;color:var(--ink);background:var(--bg)}
-header{background:var(--red);color:#fff;padding:12px 24px}
-header .title{font-size:20px;font-weight:700;letter-spacing:.2px}
-header .sub{font-size:15px;opacity:.9}
-main{max-width:1180px;margin:0 auto;padding:20px 24px 32px}
-a{color:var(--red)}
-h1{font-size:24px;margin:0 0 4px}
-h2{font-size:17px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
-.lede{color:var(--muted);margin:0 0 20px}
 
-/* form */
-form.raise{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
-label{display:block;font-size:15px;font-weight:600;margin:0 0 6px}
-select,input{width:100%;min-height:46px;padding:9px 11px;font-family:inherit;font-size:16px;
-border:1px solid #9a9a9a;border-radius:6px;background:#fff;color:var(--ink)}
-select:focus,input:focus{outline:3px solid var(--red);outline-offset:1px}
-.hint{font-size:15px;color:var(--muted);margin:6px 0 0}
-button.submit{margin-top:18px;min-height:52px;padding:12px 28px;border:0;border-radius:6px;
-background:var(--red);color:#fff;font-family:inherit;font-size:17px;font-weight:700;cursor:pointer}
+/* Nothing may force the page sideways: grid and flex children default to
+   min-width:auto and refuse to shrink below their content. */
+img,svg,table{max-width:100%}
+select,input,button{min-width:0; max-width:100%}
+.grid > *,.cards > *,.presets > *,form.inline > *{min-width:0}
 
-/* cards */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
-.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px}
+body{
+  margin:0; overflow-x:hidden;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  font-size:16.5px; line-height:1.55;
+  color:var(--ink); background:var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+
+table,.counter .v,.mono,td.n,.pledged{font-variant-numeric:tabular-nums}
+
+a{color:var(--red); text-underline-offset:2px}
+a:hover{color:var(--red-600)}
+
+/* ── application bar ─────────────────────────────────────────────────── */
+/* White, not red. The brand lives in the wordmark and the active nav pill,
+   which is what makes the rest of the interface feel like an instrument
+   rather than a brochure. */
+
+header{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:20px; flex-wrap:wrap;
+  background:var(--surface);
+  padding:14px 26px;
+  border-bottom:1px solid var(--line);
+}
+header .brand{display:flex; flex-direction:column}
+header .title{
+  font-size:21px; font-weight:800; letter-spacing:-.02em;
+  color:var(--red); line-height:1.2;
+}
+header .sub{font-size:14px; font-weight:500; color:var(--muted); margin-top:1px}
+
+.hdr-nav{display:flex; gap:4px; align-items:center}
+.hdr-nav a{
+  display:inline-block; padding:9px 16px;
+  border-radius:var(--pill);
+  color:var(--muted);
+  font-size:15px; font-weight:700; text-decoration:none;
+  transition:background .14s ease, color .14s ease;
+}
+.hdr-nav a:hover{background:var(--bg); color:var(--ink)}
+.hdr-nav a.on{background:var(--red); color:#fff}
+.hdr-nav a:focus-visible{outline:2px solid var(--red); outline-offset:2px}
+
+main{max-width:1240px; margin:0 auto; padding:30px 26px 56px}
+
+/* ── page head ───────────────────────────────────────────────────────── */
+
+.page-head{
+  display:flex; align-items:flex-start; justify-content:space-between;
+  gap:20px; flex-wrap:wrap; margin:0 0 26px;
+}
+h1{
+  font-size:32px; font-weight:800; letter-spacing:-.03em;
+  line-height:1.15; margin:0;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+}
+.lede{color:var(--muted); font-size:16.5px; margin:7px 0 0; max-width:76ch}
+.page-head .lede{margin-top:6px}
+
+.btn-secondary{
+  flex:none; display:inline-block;
+  padding:11px 20px;
+  border:1px solid var(--line-2); border-radius:var(--pill);
+  background:var(--surface); color:var(--ink);
+  font-size:15.5px; font-weight:700; text-decoration:none;
+  box-shadow:var(--sh-1);
+  transition:all .14s ease;
+}
+.btn-secondary:hover{border-color:var(--red); color:var(--red); box-shadow:var(--sh-2)}
+.btn-secondary:focus-visible{outline:2px solid var(--red); outline-offset:2px}
+
+/* Section labels sit above their content without a rule. The card's own edge
+   already separates it; a second line there is one border too many. */
+h2{
+  font-size:13px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.09em;
+  color:var(--muted);
+  margin:0 0 16px;
+}
+.card-head{margin:0 0 20px}
+.card-head h2{margin:0}
+
+/* ── surfaces ────────────────────────────────────────────────────────── */
+
+form.raise,.card,.presets{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r-lg);
+  box-shadow:var(--sh-2);
+}
+form.raise{padding:26px}
+.card{padding:24px}
+
+.cards{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+  gap:18px; align-items:stretch;
+}
 .card.wide{grid-column:1/-1}
-.point-name{font-size:22px;font-weight:700;color:var(--red);margin:0 0 2px}
-.routing{margin:12px 0 0;padding:12px;background:var(--bg);border-left:4px solid var(--red);
-font-size:15px}
-.amber{background:var(--amber-bg);border:1px solid #e0b978;border-left:6px solid var(--amber);
-border-radius:10px;padding:18px}
+
+.point-name{
+  font-size:26px; font-weight:800; letter-spacing:-.025em;
+  color:var(--ink); margin:0 0 4px;
+}
+
+/* Tinted, borderless, rounded - a note rather than a warning stripe. */
+.routing{
+  margin:18px 0 0; padding:14px 16px;
+  background:var(--red-050);
+  border:1px solid var(--red-100);
+  border-radius:var(--r);
+  font-size:15px; line-height:1.55; color:var(--ink-2);
+}
+
+.amber{
+  background:var(--amber-050);
+  border:1px solid var(--amber-100);
+  border-radius:var(--r-lg);
+  padding:24px;
+  box-shadow:var(--sh-1);
+}
 .amber h2{color:var(--amber)}
-.amber .reason{font-size:17px;font-weight:600;margin:0 0 10px}
+.amber .reason{font-size:19px; font-weight:800; margin:0 0 8px; color:var(--ink)}
 
-/* figures */
-table{width:100%;border-collapse:collapse;font-size:15px}
-th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #ececec}
-th{color:var(--muted);font-weight:600}
-td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
-.counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin:0 0 14px}
-.counter{background:var(--bg);border-radius:8px;padding:10px;text-align:center}
-.counter .v{display:block;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
-.counter .k{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-.pledged{font-size:20px;font-weight:700;color:var(--ok);margin:0}
-.note{font-size:15px;color:var(--muted);margin:10px 0 0}
-.mono{font-family:ui-monospace,Consolas,monospace;font-size:14px;word-break:break-all}
-.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700;
-background:var(--red);color:#fff}
+/* ── form ────────────────────────────────────────────────────────────── */
 
-/* gateway console */
-.sim-banner{background:#fff4d6;border:1px solid #e0b978;border-left:6px solid #b8860b;
-border-radius:8px;padding:14px 16px;margin:0 0 18px;font-size:16px}
-.sim-banner code{font-family:ui-monospace,Consolas,monospace}
-form.inline{display:flex;gap:10px;margin:10px 0 0}
-button.rate{min-height:44px;padding:8px 20px;border:2px solid var(--red);border-radius:6px;
-background:#fff;color:var(--red);font-family:inherit;font-size:16px;font-weight:700;cursor:pointer}
-button.rate.on{background:var(--red);color:#fff}
-table.queue td.msg{font-size:14px;max-width:520px}
-table.queue .err{color:var(--red);font-size:13px}
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:20px}
+
+label{
+  display:block; font-size:13px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.06em;
+  color:var(--muted); margin:0 0 8px;
+}
+
+select,input{
+  width:100%; min-height:46px; padding:11px 14px;
+  font-family:inherit; font-size:16.5px; font-weight:500; color:var(--ink);
+  background:var(--surface);
+  border:1px solid var(--line-2);
+  border-radius:var(--r-sm);
+  transition:border-color .14s ease, box-shadow .14s ease;
+}
+select:hover,input:hover{border-color:#c3c8d0}
+select:focus,input:focus{
+  outline:none; border-color:var(--red);
+  box-shadow:0 0 0 4px rgba(140,28,28,.10);
+}
+
+.hint{font-size:14.5px; color:var(--muted); margin:8px 0 0; line-height:1.5}
+
+button.submit{
+  min-height:48px; padding:13px 30px;
+  border:0; border-radius:var(--pill);
+  background:var(--red); color:#fff;
+  font-family:inherit; font-size:16.5px; font-weight:700;
+  cursor:pointer; box-shadow:0 2px 8px -2px rgba(140,28,28,.45);
+  transition:background .14s ease, box-shadow .14s ease, transform .06s ease;
+}
+button.submit:hover{background:var(--red-600); box-shadow:0 4px 14px -3px rgba(140,28,28,.5)}
+button.submit:active{transform:translateY(1px)}
+button.submit:focus-visible{outline:2px solid var(--ink); outline-offset:3px}
+
+.form-actions{
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+  margin:26px 0 0; padding:22px 0 0; border-top:1px solid var(--line);
+}
+.form-actions .hint{margin:0; flex:1 1 300px}
+
+/* ── figures ─────────────────────────────────────────────────────────── */
+
+table{width:100%; border-collapse:collapse; font-size:15.5px}
+th,td{text-align:left; padding:11px 4px; border-bottom:1px solid var(--line)}
+thead th{
+  font-size:12.5px; font-weight:800; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.06em;
+}
+/* The matching table uses th for ROW labels too; uppercasing those made the
+   figures shout and destroyed the "- paused" sub-hierarchy. */
+tbody th{font-weight:600; color:var(--ink)}
+tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
+td.n{text-align:right; font-weight:700; color:var(--ink)}
 th.r,td.r{text-align:right}
-.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:13px;font-weight:700;
-background:#e8e8e8;color:#333}
-.s-sent,.s-delivered{background:#dcefdc;color:#1d6b2f}
-.s-queued,.s-locked{background:#e6eef7;color:#1f4e79}
-.s-confirmed{background:#1d6b2f;color:#fff}
-.s-declined,.s-suppressed{background:#f0e2e2;color:#7a2020}
-.s-dead{background:#8C1C1C;color:#fff}
 
-/* map */
-#map{height:380px;margin:14px 0 0;border-radius:8px;border:1px solid var(--line);
-background:#eef1f4}
-.key{display:inline-block;width:12px;height:12px;border-radius:50%;margin:0 4px 0 12px;
-vertical-align:middle}
+/* Stat tiles. The accent bar is the whole device: a 3px rule in brand colour
+   under a large figure carries the brand without colouring the figure itself. */
+.counters{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr));
+  gap:12px; margin:0 0 20px;
+}
+.counter{
+  position:relative; overflow:hidden;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  padding:16px 12px 14px;
+  text-align:left;
+  box-shadow:var(--sh-1);
+}
+.counter::after{
+  content:""; position:absolute; left:12px; bottom:0;
+  width:22px; height:3px; border-radius:3px 3px 0 0;
+  background:var(--red); opacity:.85;
+}
+.counter .v{
+  display:block; font-size:30px; font-weight:800;
+  line-height:1.1; letter-spacing:-.03em; color:var(--ink);
+}
+.counter .k{
+  display:block; margin-top:4px;
+  font-size:12px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.06em;
+}
+
+.pledged{
+  display:flex; align-items:center; gap:10px;
+  font-size:19.5px; font-weight:800; letter-spacing:-.015em;
+  color:var(--ok); margin:0;
+  padding:14px 16px;
+  background:var(--ok-050); border:1px solid var(--ok-100);
+  border-radius:var(--r);
+}
+
+.note{font-size:14.5px; color:var(--muted); margin:14px 0 0; line-height:1.55}
+
+.mono{
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  font-size:14px; font-weight:500; word-break:break-all; color:var(--ink-2);
+  background:var(--bg); border:1px solid var(--line);
+  border-radius:var(--r-xs); padding:10px 12px;
+}
+
+.badge{
+  display:inline-block; vertical-align:middle;
+  padding:6px 14px; border-radius:var(--pill);
+  font-size:12.5px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.08em;
+  background:var(--red-050); color:var(--red);
+  border:1px solid var(--red-100);
+}
+
+.op-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:28px}
+.op-grid .note:first-child{margin-top:0}
+
+/* ── dispatch queue ──────────────────────────────────────────────────── */
+
+.sim-banner{
+  background:var(--amber-050);
+  border:1px solid var(--amber-100);
+  border-radius:var(--r);
+  padding:15px 18px; margin:0 0 22px;
+  font-size:15.5px; line-height:1.55; color:var(--ink-2);
+}
+.sim-banner strong{color:var(--amber)}
+.sim-banner code{
+  font-family:ui-monospace,Consolas,monospace; font-size:13px;
+  background:rgba(0,0,0,.05); padding:2px 7px; border-radius:5px;
+}
+
+form.inline{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0}
+
+button.rate,button.preset,button.reset{
+  min-height:40px; padding:9px 18px;
+  border:1px solid var(--line-2); border-radius:var(--pill);
+  background:var(--surface); color:var(--ink-2);
+  font-family:inherit; font-size:15px; font-weight:700;
+  cursor:pointer; transition:all .14s ease;
+}
+button.rate:hover,button.preset:hover{border-color:var(--red); color:var(--red)}
+button.rate.on,button.preset.on{background:var(--red); border-color:var(--red); color:#fff}
+button.reset:hover{border-color:var(--red); color:var(--red)}
+button.rate:focus-visible,button.preset:focus-visible,button.reset:focus-visible{
+  outline:2px solid var(--red); outline-offset:2px;
+}
+
+table.queue td.msg{font-size:14.5px; max-width:520px; color:var(--ink-2)}
+table.queue .err{display:block; margin-top:4px; color:var(--red); font-size:13.5px; font-weight:700}
+
+.pill{
+  display:inline-block;
+  padding:5px 13px; border-radius:var(--pill);
+  font-size:12.5px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.05em;
+  background:#e8ebef; color:var(--ink-2);
+  border:1px solid transparent;
+}
+.s-sent,.s-delivered{background:var(--ok-050); color:var(--ok); border-color:var(--ok-100)}
+.s-queued,.s-locked{background:var(--blue-050); color:var(--blue); border-color:var(--blue-100)}
+.s-confirmed{background:var(--ok); color:#fff; border-color:var(--ok)}
+.s-declined,.s-suppressed{background:var(--red-050); color:var(--red); border-color:var(--red-100)}
+.s-dead{background:var(--red); color:#fff; border-color:var(--red)}
+
+/* ── map ─────────────────────────────────────────────────────────────── */
+
+#map{
+  height:380px; margin:18px 0 0;
+  border-radius:var(--r);
+  border:1px solid var(--line);
+  background:#eef1f4;
+}
+.key{
+  display:inline-block; width:10px; height:10px;
+  border-radius:50%; margin:0 5px 0 14px; vertical-align:middle;
+  box-shadow:0 0 0 2px #fff;
+}
 .k-point{background:#8C1C1C}
 .k-facility{background:#2e75b6}
 .k-ward{background:#5aa84f}
 
-/* demo presets */
-.presets{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 18px;
-padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:10px}
-.presets-label{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-color:var(--muted);margin-right:4px}
-button.preset{min-height:42px;padding:8px 16px;border:2px solid var(--red);border-radius:6px;
-background:#fff;color:var(--red);font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
-button.preset.on{background:var(--red);color:#fff}
-.reset-form{margin:0 0 0 auto}
-button.reset{min-height:42px;padding:8px 16px;border:2px solid #8a8a8a;border-radius:6px;
-background:#fff;color:#4a4a4a;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+/* ── demonstration tray ──────────────────────────────────────────────── */
+
+.presets{display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:14px 16px; margin:0 0 20px}
+.presets-label{
+  font-size:12px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--muted); margin-right:2px;
+}
+
+.demo-tray{
+  margin:24px 0 0;
+  border:1px solid var(--line); border-radius:var(--r);
+  background:var(--bg);
+}
+.demo-tray summary{
+  padding:13px 16px; cursor:pointer; list-style:none;
+  font-size:12.5px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
+}
+.demo-tray summary::-webkit-details-marker{display:none}
+.demo-tray summary::before{content:"\25B8\00a0\00a0"}
+.demo-tray[open] summary::before{content:"\25BE\00a0\00a0"}
+.demo-tray summary:hover{color:var(--ink-2)}
+.demo-tray summary:focus-visible{outline:2px solid var(--red); outline-offset:-2px; border-radius:var(--r)}
+.demo-body{padding:2px 16px 18px; border-top:1px solid var(--line)}
+.demo-row{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:14px 0 0}
+.demo-label{
+  font-size:12px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--muted); margin-right:2px;
+}
+.demo-field{flex:1 1 280px; max-width:340px}
+.demo-field .hint{max-width:none}
+
+/* Destructive, and kept away from the control used many times an hour. */
+.reset-form{margin:28px 0 0}
+
+/* ── narrow viewports ────────────────────────────────────────────────── */
+
+@media (max-width:760px){
+  header{padding:12px 16px; gap:10px}
+  .hdr-nav{width:100%}
+  .hdr-nav a{flex:1; text-align:center}
+  main{padding:22px 16px 40px}
+  h1{font-size:24px}
+  .cards{grid-template-columns:1fr}
+  .card,form.raise,.amber{padding:20px; border-radius:var(--r)}
+  .grid{grid-template-columns:1fr; gap:16px}
+  .page-head{gap:14px}
+  .btn-secondary{width:100%; text-align:center}
+  .form-actions{align-items:stretch}
+  .form-actions .submit{width:100%}
+  .counters{grid-template-columns:repeat(auto-fit,minmax(86px,1fr))}
+  /* The queue cannot reflow, so it scrolls inside itself. */
+  table.queue{display:block; overflow-x:auto; white-space:nowrap}
+  table.queue td.msg{white-space:normal; min-width:220px}
+}
+
+/* 430px, not 380px: the breakpoint has to engage on a 390pt iPhone and a
+   412dp Android, not only on the narrowest device in the spec. */
+@media (max-width:430px){
+  main{padding:18px 14px 32px}
+  h1{font-size:21px}
+  .counters{grid-template-columns:repeat(2,1fr)}
+  .presets,.demo-row,form.inline{flex-direction:column; align-items:stretch}
+  button.preset,button.reset,button.rate{width:100%}
+  .reset-form{width:100%}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important}
+}

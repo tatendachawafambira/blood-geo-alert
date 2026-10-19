@@ -3,37 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raise a deficit request - Blood Geo Alert</title>
+<title>New deficit request &middot; Blood Geo Alert</title>
 <link rel="stylesheet" href="/static/dashboard.css">
 </head>
 <body>
 <header>
-  <div class="title">Blood Geo Alert</div>
-  <div class="sub">National Blood Service Zimbabwe &middot; clinician dashboard</div>
+  <div class="brand">
+    <div class="title">Blood Geo Alert</div>
+    <div class="sub">National Blood Service Zimbabwe</div>
+  </div>
+  <nav class="hdr-nav">
+    <a href="/" class="on">Requests</a>
+    <a href="/gateway">Dispatch queue</a>
+  </nav>
 </header>
 
 <main>
-<h1>Raise a deficit request</h1>
-<p class="lede">Donors are matched around the nearest open NBSZ collection point, never around the hospital.</p>
-
-<div class="presets">
-  <span class="presets-label">Scenarios</span>
-  {% for p in presets %}
-  <button type="button" class="preset" title="{{ p.note }}"
-          data-facility="{{ p.facility_id }}" data-group="{{ p.blood_group }}"
-          data-units="{{ p.units_required }}" data-urgency="{{ p.urgency }}"
-          data-time="{{ p.simulated_time }}">{{ p.label }}</button>
-  {% endfor %}
-  <form method="post" action="/demo/reset" class="reset-form"
-        onsubmit="return confirm('Clear all requests, alerts and contact holds? Donors, reference data and the audit trail are kept.')">
-    <button type="submit" class="reset">Reset demo</button>
-  </form>
+<div class="page-head">
+  <div>
+    <h1>New deficit request</h1>
+    <p class="lede">Donors are matched around the nearest open NBSZ collection point,
+      never around the requesting hospital.</p>
+  </div>
 </div>
 
 <form class="raise" method="post" action="/requests">
+  <div class="card-head">
+    <h2>Request details</h2>
+  </div>
+
   <div class="grid">
     <div>
-      <label for="facility_id">Facility</label>
+      <label for="facility_id">Requesting facility</label>
       <select id="facility_id" name="facility_id" required>
         {% for f in facilities %}
         <option value="{{ f.id }}" {% if f.id == selected_facility %}selected{% endif %}>{{ f.name }}</option>
@@ -53,6 +54,7 @@
     <div>
       <label for="units_required">Units required</label>
       <input id="units_required" name="units_required" type="number" min="1" max="50" value="4" required>
+      <p class="hint">Determines the alert ceiling &mdash; at most 10 donors per unit.</p>
     </div>
 
     <div>
@@ -62,20 +64,56 @@
         <option value="{{ u }}" {% if u == 'URGENT' %}selected{% endif %}>{{ u|capitalize }}</option>
         {% endfor %}
       </select>
-    </div>
-
-    <div>
-      <label for="simulated_time">Simulated time</label>
-      <input id="simulated_time" name="simulated_time" type="datetime-local" value="{{ now_local }}" required>
-      <p class="hint">Used for opening hours and eligibility. Africa/Harare.</p>
+      <p class="hint">Urgent and critical requests ignore quiet hours.</p>
     </div>
   </div>
 
-  <button class="submit" type="submit">Raise request</button>
+  <div class="form-actions">
+    <button class="submit" type="submit">Raise request</button>
+    <p class="hint">Eligibility, deferral and contact limits are applied before any
+      message is composed. Ineligible donors are never contacted.</p>
+  </div>
+
+  {# Demonstration controls.
+     Closed by default and visually subordinate: this is an operational screen,
+     and a scenario picker sitting above the primary workflow made the whole
+     interface read as a prototype. The inputs still submit while the tray is
+     closed - <details> hides content, it does not remove it from the form. #}
+  <details class="demo-tray">
+    <summary>Demonstration controls</summary>
+    <div class="demo-body">
+      <div class="demo-row">
+        <span class="demo-label">Load a scenario</span>
+        {% for p in presets %}
+        <button type="button" class="preset" title="{{ p.note }}"
+                data-facility="{{ p.facility_id }}" data-group="{{ p.blood_group }}"
+                data-units="{{ p.units_required }}" data-urgency="{{ p.urgency }}"
+                data-time="{{ p.simulated_time }}">{{ p.label }}</button>
+        {% endfor %}
+      </div>
+
+      <div class="demo-row">
+        <div class="demo-field">
+          <label for="simulated_time">Effective time</label>
+          <input id="simulated_time" name="simulated_time" type="datetime-local"
+                 value="{{ now_local }}" required>
+          <p class="hint">Opening hours and eligibility are evaluated against this
+            instant. Africa/Harare. In production this is the current time.</p>
+        </div>
+      </div>
+    </div>
+  </details>
+</form>
+
+{# Outside the request form: a nested form is invalid HTML and the reset would
+   otherwise submit the request it is meant to clear. #}
+<form method="post" action="/demo/reset" class="reset-form"
+      onsubmit="return confirm('Clear all requests, alerts and contact holds? Donors, reference data and the audit trail are kept.')">
+  <button type="submit" class="reset">Reset demonstration data</button>
 </form>
 
 {% if not facilities %}
-<p class="note">No facilities are registered yet. Run scripts/seed_reference.py first.</p>
+<p class="note">No facilities are registered. Run <code>scripts/seed_reference.py</code>.</p>
 {% endif %}
 </main>
 
